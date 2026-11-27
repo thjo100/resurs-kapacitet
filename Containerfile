@@ -3,7 +3,7 @@
 # Kör:   podman run -d -p 8080:8080 -v resurs-data:/data resurs-kapacitet
 
 # ---------- Frontend (Vue 3 + Vite) ----------
-FROM docker.io/library/node:22-alpine AS frontend
+FROM docker.io/library/node:26-alpine AS frontend
 WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
 RUN npm ci --no-audit --no-fund
