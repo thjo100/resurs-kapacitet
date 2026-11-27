@@ -8,6 +8,11 @@ export class ApiError extends Error {
 }
 
 async function request(method, url, body) {
+  // Demoläge (npm run build:demo): svaren kommer från en webbläsarbaserad backend.
+  if (import.meta.env.VITE_DEMO === 'true') {
+    const { mockRequest } = await import('./demo/mockApi.js')
+    return mockRequest(method, url, body)
+  }
   const opts = { method, headers: {}, credentials: 'same-origin' }
   if (body !== undefined) {
     opts.headers['Content-Type'] = 'application/json'

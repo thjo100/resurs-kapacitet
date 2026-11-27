@@ -100,6 +100,16 @@ async function doLogout() {
 }
 
 const reload = () => window.location.reload()
+const isDemo = import.meta.env.VITE_DEMO === 'true'
+async function resetDemo() {
+  userMenu.value = false
+  moreOpen.value = false
+  await api.post('/api/demo/reset')
+  store.me = null
+  await loadPlanning(store.year)
+  router.push('/')
+  toast('Demodatan är återställd.', { type: 'success' })
+}
 const toggleTheme = () => setTheme(store.theme === 'dark' ? 'light' : 'dark')
 const isActive = (item) => (item.name === 'admin' ? route.name === 'admin' : route.name === item.name)
 </script>
@@ -158,6 +168,7 @@ const isActive = (item) => (item.name === 'admin' ? route.name === 'admin' : rou
               <span class="muted small">{{ store.me.userName }} · {{ store.me.role === 'Lasare' ? 'Läsare' : store.me.role }}</span>
             </div>
             <button class="menu-item" @click="((pwOpen = true), (userMenu = false))"><Icon name="key" :size="16" /> Byt lösenord</button>
+            <button v-if="isDemo" class="menu-item" @click="resetDemo"><Icon name="refresh" :size="16" /> Återställ demodata</button>
             <button class="menu-item" @click="doLogout"><Icon name="logout" :size="16" /> Logga ut</button>
           </div>
         </Transition>
@@ -224,6 +235,7 @@ const isActive = (item) => (item.name === 'admin' ? route.name === 'admin' : rou
           <Icon :name="store.theme === 'dark' ? 'sun' : 'moon'" :size="18" />
           {{ store.theme === 'dark' ? 'Ljust tema' : 'Mörkt tema' }}
         </button>
+        <button v-if="isDemo" class="menu-item" @click="resetDemo"><Icon name="refresh" :size="18" /> Återställ demodata</button>
         <button v-if="store.me" class="menu-item" @click="doLogout"><Icon name="logout" :size="18" /> Logga ut</button>
         <RouterLink v-else class="menu-item" to="/logga-in" @click="moreOpen = false"><Icon name="login" :size="18" /> Logga in</RouterLink>
         <p class="faint xs" style="padding: 8px 12px">Version {{ store.version?.version }}</p>
@@ -283,7 +295,7 @@ const isActive = (item) => (item.name === 'admin' ? route.name === 'admin' : rou
 .topbar {
   grid-area: top;
   position: sticky;
-  top: 0;
+  top: env(safe-area-inset-top, 0px);
   z-index: 50;
   display: flex;
   align-items: center;

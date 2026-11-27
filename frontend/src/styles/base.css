@@ -511,7 +511,7 @@ table.table {
 }
 @media (max-width: 767px) {
   .page {
-    padding: var(--sp-3);
+    padding: var(--sp-4) max(16px, env(safe-area-inset-right, 0px)) var(--sp-4) max(16px, env(safe-area-inset-left, 0px));
   }
   h1 {
     font-size: var(--fs-xl);

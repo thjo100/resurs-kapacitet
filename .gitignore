@@ -8,6 +8,7 @@ TestResults/
 # Frontend
 node_modules/
 frontend/dist/
+frontend/dist-demo/
 
 # Genererat vid lokal körning
 backend/src/ResursKapacitet.Api/wwwroot/

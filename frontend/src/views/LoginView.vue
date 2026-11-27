@@ -34,7 +34,9 @@ async function submit() {
       <label class="field"><span>Lösenord</span><input v-model="password" class="input" type="password" autocomplete="current-password" required /></label>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
       <button class="btn primary" type="submit" :disabled="busy">{{ busy ? 'Loggar in…' : 'Logga in' }}</button>
-      <p v-if="store.version?.environment" class="faint small">Testmiljö: prova <code>admin</code> / <code>admin</code> eller <code>planerare</code> / <code>planerare</code>.</p>
+      <p v-if="store.version?.environment" class="hint small">
+        {{ store.version.environment === 'Demo' ? 'Demo' : 'Testmiljö' }}: logga in med <code>admin</code> / <code>admin</code> eller <code>planerare</code> / <code>planerare</code>.
+      </p>
     </form>
   </div>
 </template>
@@ -62,5 +64,11 @@ async function submit() {
 }
 .btn.primary {
   height: 40px;
+}
+.hint {
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  color: var(--text);
 }
 </style>

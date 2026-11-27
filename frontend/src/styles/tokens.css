@@ -119,6 +119,53 @@
   color-scheme: dark;
 }
 
+/* Systemets mörka läge gäller när användaren inte valt tema uttryckligen. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0f1216;
+    --surface: #171b21;
+    --surface-2: #1f242c;
+    --surface-3: #272d36;
+    --border: #2e3540;
+    --border-strong: #434c59;
+    --text: #e6e9ee;
+    --text-muted: #9aa3b0;
+    --text-faint: #6f7886;
+    --accent: #6f9bff;
+    --accent-hover: #8fb3ff;
+    --on-accent: #0b1220;
+    --accent-soft: #1d2a45;
+    --focus: #8fb3ff;
+    --success: #5fd08a;
+    --warning: #f5c25b;
+    --danger: #ff7b78;
+    --danger-soft: #431819;
+
+    --occ-empty-fg: #6f7886;
+    --occ-low-bg: #1e232b;
+    --occ-low-fg: #a3acb9;
+    --occ-low-bar: #6b7585;
+    --occ-ok-bg: #12301e;
+    --occ-ok-fg: #7ddc9b;
+    --occ-ok-bar: #3fb868;
+    --occ-near-bg: #3a2c0b;
+    --occ-near-fg: #f5c25b;
+    --occ-near-bar: #e0a21d;
+    --occ-over-bg: #431819;
+    --occ-over-fg: #ff8a87;
+    --occ-over-bar: #f05252;
+
+    --hatch: rgba(255, 255, 255, 0.06);
+    --shadow-edge: rgba(0, 0, 0, 0.5);
+    --sh-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --sh-2: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --sh-3: 0 12px 32px rgba(0, 0, 0, 0.6);
+    --shimmer: rgba(255, 255, 255, 0.06);
+    color-scheme: dark;
+  }
+}
+
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --dur-1: 0.01ms;

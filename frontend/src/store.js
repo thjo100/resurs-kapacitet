@@ -30,7 +30,9 @@ export const store = reactive({
   loadError: null,
   save: { state: 'idle', at: null, error: null },
   toasts: [],
-  theme: document.documentElement.getAttribute('data-theme') || 'light',
+  theme:
+    document.documentElement.getAttribute('data-theme') ||
+    (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
   remoteChange: null,
   newVersion: null,
   lastSeenVersion: readLS('rk-last-seen-version', ''),

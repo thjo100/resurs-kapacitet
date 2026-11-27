@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createMemoryHistory, createRouter, createWebHistory } from 'vue-router'
 import { store, loadMe } from './store.js'
 
 const routes = [
@@ -19,7 +19,8 @@ const routes = [
 ]
 
 export const router = createRouter({
-  history: createWebHistory(),
+  // Demoläget körs inbäddat (t.ex. som publicerad sida) och använder därför minnesbaserad historik.
+  history: import.meta.env.VITE_DEMO === 'true' ? createMemoryHistory() : createWebHistory(),
   routes,
   scrollBehavior: () => ({ top: 0 }),
 })

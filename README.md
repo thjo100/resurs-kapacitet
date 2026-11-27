@@ -97,6 +97,14 @@ dotnet test backend/ResursKapacitet.slnx
 cd frontend && npm test
 ```
 
+### Demoläge (utan server)
+
+```bash
+cd frontend && npm run build:demo
+```
+
+Bygget ger `frontend/dist-demo/resurs-kapacitet-demo.html`. Det är en fristående fil med hela gränssnittet och en demo-backend i webbläsaren, och datan sparas i webbläsarens localStorage. Filen är bra för att visa upp eller testa gränssnittet. Export och säkerhetskopia fungerar bara i den riktiga installationen. Det vanliga bygget och containern innehåller ingen demokod.
+
 ### Databasändringar
 
 Ändra entiteterna i `backend/src/ResursKapacitet.Api/Data` och skapa en migrering:

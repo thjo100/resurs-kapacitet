@@ -895,7 +895,7 @@ const exportUrl = computed(() => `/api/export/planning.csv?year=${year.value}`)
 }
 @media (max-width: 767px) {
   .planning {
-    padding: var(--sp-2);
+    padding: var(--sp-3) max(16px, env(safe-area-inset-right, 0px)) var(--sp-2) max(16px, env(safe-area-inset-left, 0px));
   }
   .title {
     font-size: var(--fs-lg);
