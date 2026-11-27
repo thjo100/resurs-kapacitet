@@ -11,7 +11,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # ---------- Backend (.NET 10) ----------
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS backend
 WORKDIR /src
 COPY backend/src/ResursKapacitet.Api/ResursKapacitet.Api.csproj backend/src/ResursKapacitet.Api/
 RUN dotnet restore backend/src/ResursKapacitet.Api/ResursKapacitet.Api.csproj
