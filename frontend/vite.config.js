@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
@@ -5,8 +6,14 @@ import vue from '@vitejs/plugin-vue'
 // Demobygge (`npm run build:demo`): allt i ett JS-paket med en webbläsarbaserad backend, se src/demo/mockApi.js.
 export default defineConfig(({ mode }) => {
   const demo = mode === 'demo'
+  // Demobygget visar samma release notes som backend. Läses bara i demoläge, så containerbygget
+  // (som bara har frontend-mappen) inte behöver backend-filerna.
+  const releaseNotes = demo
+    ? readFileSync(new URL('../backend/src/ResursKapacitet.Api/ReleaseNotes.json', import.meta.url), 'utf8')
+    : '[]'
   return {
     plugins: [vue()],
+    define: { __RELEASE_NOTES__: releaseNotes },
     base: demo ? './' : '/',
     server: {
       port: 5173,

@@ -1,19 +1,30 @@
-# Håller beroenden uppdaterade – varje uppdatering kommer som en PR med eget PR-bygge och PR-miljö.
+# Håller beroenden uppdaterade – varje uppdatering kommer som en PR mot main med eget PR-bygge.
+# .NET och Node hålls på sina LTS-versioner (.NET 10, Node 22): större versionsbyten görs manuellt.
 version: 2
 updates:
   - package-ecosystem: nuget
     directory: /backend
+    target-branch: main
     schedule: { interval: weekly, day: monday }
     groups:
       dotnet: { patterns: ['*'] }
+    ignore:
+      - dependency-name: 'Microsoft.*'
+        update-types: ['version-update:semver-major']
   - package-ecosystem: npm
     directory: /frontend
+    target-branch: main
     schedule: { interval: weekly, day: monday }
     groups:
       frontend: { patterns: ['*'] }
   - package-ecosystem: docker
     directory: /
+    target-branch: main
     schedule: { interval: weekly, day: monday }
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
+    target-branch: main
     schedule: { interval: monthly }

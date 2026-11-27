@@ -1,7 +1,10 @@
 // Demoläge: en webbläsarbaserad backend som följer samma regler som .NET-API:t.
 // Används bara när appen byggs med `npm run build:demo` (VITE_DEMO=true). Data sparas i webbläsarens localStorage.
-import releaseNotes from '../../../backend/src/ResursKapacitet.Api/ReleaseNotes.json'
 import { ApiError } from '../api.js'
+
+// Release notes läggs in vid demobygget (se vite.config.js) – det vanliga bygget behöver inte backend-mappen.
+// eslint-disable-next-line no-undef
+const releaseNotes = typeof __RELEASE_NOTES__ !== 'undefined' ? __RELEASE_NOTES__ : []
 
 const KEY = 'rk-demo-db-v1'
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAJ', 'JUN', 'JUL', 'AUG', 'SEP', 'OKT', 'NOV', 'DEC']
