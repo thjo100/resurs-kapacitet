@@ -1,0 +1,353 @@
+# CI/CD för Resurs & Kapacitet
+#
+#  Pull request  -> bygg & test -> container-image :pr-<nr> till Docker Hub -> PR-miljö (Podman) + kommentar med adress
+#  Push till main -> bygg & test -> image :<version>, :latest -> GitHub Release -> driftsättning till produktion
+#
+# Konfiguration (Settings -> Secrets and variables -> Actions), se README.md:
+#   secrets.DOCKERHUB_USERNAME, secrets.DOCKERHUB_TOKEN     – Docker Hub-konto och access token
+#   vars.DOCKERHUB_IMAGE        – t.ex. "mittkonto/resurs-kapacitet"
+#   vars.PREVIEW_HOST           – värdnamn för PR-miljöer, t.ex. "resurs-test.intranet.local" (aktiverar PR-miljöer)
+#   vars.PREVIEW_BASE_PORT      – första port för PR-miljöer (standard 9000, PR #12 -> 9012)
+#   vars.PREVIEW_URL_TEMPLATE   – valfritt, t.ex. "https://pr-{pr}.resurs.intranet.local" om ni har en reverse proxy
+#   vars.PRODUCTION_DEPLOY      – "true" för att driftsätta automatiskt efter merge till main
+#   vars.PRODUCTION_URL         – t.ex. "http://resurs.intranet.local:8080"
+# PR-miljöer och produktion kräver en self-hosted runner med etiketterna [self-hosted, podman] på intranätet.
+
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  test:
+    name: Bygg & test
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend – installera beroenden
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Frontend – enhetstester
+        working-directory: frontend
+        run: npm test
+
+      - name: Frontend – bygg
+        working-directory: frontend
+        run: npm run build
+
+      - name: Backend – bygg & test
+        run: dotnet test backend/ResursKapacitet.slnx -c Release
+
+      - name: Backend – kontrollera att databasmigreringar finns för alla modelländringar
+        run: |
+          dotnet tool install --global dotnet-ef --version "10.0.*"
+          "$HOME/.dotnet/tools/dotnet-ef" migrations has-pending-model-changes --project backend/src/ResursKapacitet.Api
+
+      - name: Version från release notes
+        id: version
+        run: |
+          VERSION=$(jq -r '.[0].version' backend/src/ResursKapacitet.Api/ReleaseNotes.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event_name }}" = "pull_request" ] && git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            echo "::warning title=Release notes::Version $VERSION är redan släppt. Lägg till en ny post överst i backend/src/ResursKapacitet.Api/ReleaseNotes.json så att nyheterna syns i appen efter merge."
+          fi
+
+  image:
+    name: Container-image
+    needs: test
+    runs-on: ubuntu-24.04
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+      tag: ${{ steps.meta.outputs.tag }}
+      app_version: ${{ steps.meta.outputs.app_version }}
+      pushed: ${{ steps.push.outputs.pushed }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Bestäm namn och taggar
+        id: meta
+        env:
+          IMAGE: ${{ vars.DOCKERHUB_IMAGE }}
+          VERSION: ${{ needs.test.outputs.version }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          SHORT="${GITHUB_SHA::7}"
+          if [ -n "$IMAGE" ]; then IMAGE="docker.io/$IMAGE"; else IMAGE="localhost/resurs-kapacitet"; fi
+          if [ -n "$PR" ]; then
+            APP_VERSION="$VERSION-pr.$PR"
+            TAG="pr-$PR"
+            TAGS="pr-$PR pr-$PR-$SHORT"
+          else
+            APP_VERSION="$VERSION"
+            TAG="$VERSION"
+            TAGS="$VERSION latest main sha-$SHORT"
+          fi
+          {
+            echo "image=$IMAGE"
+            echo "tag=$TAG"
+            echo "tags=$TAGS"
+            echo "app_version=$APP_VERSION"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Bygg image med Podman
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+          APP_VERSION: ${{ steps.meta.outputs.app_version }}
+        run: |
+          podman --version
+          TAG_ARGS=""
+          for t in $TAGS; do TAG_ARGS="$TAG_ARGS -t $IMAGE:$t"; done
+          podman build --format docker -f Containerfile \
+            --build-arg APP_VERSION="$APP_VERSION" \
+            --build-arg GIT_SHA="$GITHUB_SHA" \
+            --build-arg BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            $TAG_ARGS .
+
+      - name: Röktest av imagen
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          podman run -d --name smoke -p 8080:8080 -e SEED_DEMO=true "$IMAGE:$TAG"
+          for i in $(seq 1 45); do
+            if curl -fsS http://localhost:8080/api/health >/dev/null 2>&1; then break; fi
+            sleep 2
+          done
+          curl -fsS http://localhost:8080/api/health
+          curl -fsS http://localhost:8080/api/version
+          test "$(curl -fsS http://localhost:8080/api/planning | jq '.resources | length')" -gt 0
+          curl -fsS http://localhost:8080/planering | grep -q 'id="app"'
+          podman exec smoke dotnet ResursKapacitet.Api.dll --healthcheck
+          podman logs smoke | tail -20
+          podman rm -f smoke
+
+      - name: Publicera till Docker Hub
+        id: push
+        if: vars.DOCKERHUB_IMAGE != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          IMAGE: ${{ steps.meta.outputs.image }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          if [ -z "$DH_USER" ] || [ -z "$DH_TOKEN" ]; then
+            echo "::warning::DOCKERHUB_USERNAME/DOCKERHUB_TOKEN saknas – imagen byggdes men publicerades inte."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "$DH_TOKEN" | podman login docker.io -u "$DH_USER" --password-stdin
+          for t in $TAGS; do podman push "$IMAGE:$t"; done
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+          echo "Publicerad: \`$IMAGE\` ($TAGS)" >> "$GITHUB_STEP_SUMMARY"
+
+  preview:
+    name: PR-miljö
+    needs: image
+    if: >-
+      github.event_name == 'pull_request' &&
+      needs.image.outputs.pushed == 'true' &&
+      vars.PREVIEW_HOST != '' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, podman]
+    environment:
+      name: pr-${{ github.event.pull_request.number }}
+      url: ${{ steps.deploy.outputs.url }}
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Starta/uppdatera PR-miljö
+        id: deploy
+        env:
+          IMAGE: ${{ needs.image.outputs.image }}
+          TAG: ${{ needs.image.outputs.tag }}
+          PR: ${{ github.event.pull_request.number }}
+          HOST: ${{ vars.PREVIEW_HOST }}
+          BASE_PORT: ${{ vars.PREVIEW_BASE_PORT || '9000' }}
+          URL_TEMPLATE: ${{ vars.PREVIEW_URL_TEMPLATE }}
+        run: |
+          set -euo pipefail
+          PORT=$((BASE_PORT + PR % 1000))
+          NAME="rk-pr-$PR"
+          podman pull "$IMAGE:$TAG"
+          podman rm -f "$NAME" >/dev/null 2>&1 || true
+          # Volymen behålls mellan pushar i samma PR så att testdata ligger kvar (och migreringar testas mot befintlig data).
+          podman run -d --name "$NAME" \
+            --label rk.preview=true --label "rk.pr=$PR" \
+            -p "$PORT:8080" \
+            -v "$NAME-data:/data:Z" \
+            -e SEED_DEMO=true \
+            -e ADMIN_PASSWORD=admin \
+            -e "APP_ENV_LABEL=PR #$PR" \
+            "$IMAGE:$TAG"
+          for i in $(seq 1 45); do
+            if curl -fsS "http://localhost:$PORT/api/health" >/dev/null 2>&1; then break; fi
+            sleep 2
+          done
+          curl -fsS "http://localhost:$PORT/api/health"
+          if [ -n "$URL_TEMPLATE" ]; then
+            URL="${URL_TEMPLATE//\{pr\}/$PR}"
+            URL="${URL//\{port\}/$PORT}"
+          else
+            URL="http://$HOST:$PORT"
+          fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "PR-miljö: $URL" >> "$GITHUB_STEP_SUMMARY"
+          podman image prune -f >/dev/null 2>&1 || true
+
+  comment:
+    name: Kommentera PR
+    needs: [test, image, preview]
+    if: always() && github.event_name == 'pull_request' && needs.image.result == 'success'
+    runs-on: ubuntu-24.04
+    permissions:
+      pull-requests: write
+    continue-on-error: true
+    steps:
+      - uses: actions/github-script@v8
+        env:
+          IMAGE: ${{ needs.image.outputs.image }}
+          TAG: ${{ needs.image.outputs.tag }}
+          APP_VERSION: ${{ needs.image.outputs.app_version }}
+          PUSHED: ${{ needs.image.outputs.pushed }}
+          URL: ${{ needs.preview.outputs.url }}
+          PREVIEW_RESULT: ${{ needs.preview.result }}
+        with:
+          script: |
+            const { IMAGE, TAG, APP_VERSION, PUSHED, URL, PREVIEW_RESULT } = process.env
+            const marker = '<!-- resurs-kapacitet-preview -->'
+            const sha = context.payload.pull_request.head.sha.slice(0, 7)
+            const lines = [marker, '### Resurs & Kapacitet – PR-bygge', '']
+            if (URL) {
+              lines.push(`**PR-miljö:** ${URL}  `)
+              lines.push('Logga in med `admin` / `admin` eller `planerare` / `planerare` (demodata).')
+            } else if (PREVIEW_RESULT === 'failure') {
+              lines.push('PR-miljön kunde inte startas – se loggen för jobbet *PR-miljö*.')
+            } else {
+              lines.push('PR-miljö är inte konfigurerad (sätt variabeln `PREVIEW_HOST` och koppla en self-hosted runner, se README).')
+            }
+            lines.push('', '| | |', '|---|---|')
+            lines.push(`| Version | \`${APP_VERSION}\` |`)
+            lines.push(`| Commit | \`${sha}\` |`)
+            if (PUSHED === 'true') {
+              lines.push(`| Image | \`${IMAGE}:${TAG}\` |`)
+              lines.push('', 'Testa lokalt med Podman:', '```bash', `podman run --rm -p 8080:8080 -e SEED_DEMO=true ${IMAGE}:${TAG}`, '```')
+            } else {
+              lines.push('| Image | byggd och röktestad, men inte publicerad (Docker Hub ej konfigurerat) |')
+            }
+            const body = lines.join('\n')
+            const { owner, repo } = context.repo
+            const issue_number = context.payload.pull_request.number
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number })
+            const existing = comments.find((c) => c.body?.includes(marker))
+            if (existing) await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body })
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body })
+
+  release:
+    name: GitHub Release
+    needs: [test, image]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - name: Skapa tagg och release om versionen är ny
+        uses: actions/github-script@v8
+        env:
+          VERSION: ${{ needs.test.outputs.version }}
+          IMAGE: ${{ needs.image.outputs.image }}
+          PUSHED: ${{ needs.image.outputs.pushed }}
+        with:
+          script: |
+            const fs = require('fs')
+            const { VERSION, IMAGE, PUSHED } = process.env
+            const tag = `v${VERSION}`
+            const { owner, repo } = context.repo
+            try {
+              await github.rest.git.getRef({ owner, repo, ref: `tags/${tag}` })
+              core.info(`${tag} finns redan – ingen ny release.`)
+              return
+            } catch (e) {
+              if (e.status !== 404) throw e
+            }
+            const notes = JSON.parse(fs.readFileSync('backend/src/ResursKapacitet.Api/ReleaseNotes.json', 'utf8'))[0]
+            const label = { new: 'Nytt', improved: 'Förbättrat', fix: 'Rättat' }
+            const body = [
+              `## ${notes.title}`,
+              '',
+              ...notes.items.map((i) => `- **${label[i.type] ?? i.type}:** ${i.text}`),
+              '',
+              PUSHED === 'true' ? `Image: \`${IMAGE}:${VERSION}\` (även \`:latest\`)` : '',
+            ].join('\n')
+            await github.rest.git.createRef({ owner, repo, ref: `refs/tags/${tag}`, sha: context.sha })
+            await github.rest.repos.createRelease({ owner, repo, tag_name: tag, name: `${tag} – ${notes.title}`, body })
+
+  deploy:
+    name: Driftsätt produktion
+    needs: [image]
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      needs.image.outputs.pushed == 'true' && vars.PRODUCTION_DEPLOY == 'true'
+    runs-on: [self-hosted, podman]
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_URL }}
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    steps:
+      - name: Hämta ny version och starta om tjänsten
+        env:
+          IMAGE: ${{ needs.image.outputs.image }}
+          TAG: ${{ needs.image.outputs.tag }}
+          SERVICE: ${{ vars.PRODUCTION_SERVICE || 'resurs-kapacitet' }}
+          HEALTH_URL: ${{ vars.PRODUCTION_URL || 'http://localhost:8080' }}
+        run: |
+          set -euo pipefail
+          podman pull "$IMAGE:$TAG"
+          podman tag "$IMAGE:$TAG" "$IMAGE:latest"
+          # Runnern kör ofta som systemd-tjänst utan inloggad session – peka ut användarens systemd-instans.
+          export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+          systemctl --user restart "$SERVICE"
+          for i in $(seq 1 60); do
+            if curl -fsS "$HEALTH_URL/api/health" >/dev/null 2>&1; then
+              echo "Driftsatt: $(curl -fsS "$HEALTH_URL/api/version")" | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::Produktionen svarar inte efter uppgraderingen. Rulla tillbaka med deploy/upgrade.sh <föregående version>."
+          exit 1

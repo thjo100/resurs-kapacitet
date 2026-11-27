@@ -1,0 +1,19 @@
+# Håller beroenden uppdaterade – varje uppdatering kommer som en PR med eget PR-bygge och PR-miljö.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /backend
+    schedule: { interval: weekly, day: monday }
+    groups:
+      dotnet: { patterns: ['*'] }
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule: { interval: weekly, day: monday }
+    groups:
+      frontend: { patterns: ['*'] }
+  - package-ecosystem: docker
+    directory: /
+    schedule: { interval: weekly, day: monday }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }

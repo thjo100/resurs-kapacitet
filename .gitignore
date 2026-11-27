@@ -1,0 +1,28 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+TestResults/
+
+# Frontend
+node_modules/
+frontend/dist/
+
+# Genererat vid lokal körning
+backend/src/ResursKapacitet.Api/wwwroot/
+backend/src/ResursKapacitet.Api/data/
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Editorer / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+
+# Claude Code lokala inställningar
+.claude/settings.local.json

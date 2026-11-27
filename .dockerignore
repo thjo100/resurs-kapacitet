@@ -1,0 +1,12 @@
+.git
+.github
+**/node_modules
+**/dist
+**/bin
+**/obj
+**/data
+backend/src/ResursKapacitet.Api/wwwroot
+backend/tests
+docs
+deploy
+*.md

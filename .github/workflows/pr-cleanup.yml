@@ -1,0 +1,48 @@
+# Städar bort PR-miljön (container + volym) och PR-taggar på Docker Hub när en PR stängs eller mergas.
+name: PR-städning
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    name: Ta bort PR-miljö
+    if: vars.PREVIEW_HOST != '' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, podman]
+    steps:
+      - name: Stoppa och ta bort container och volym
+        env:
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          podman rm -f "rk-pr-$PR" || true
+          podman volume rm -f "rk-pr-$PR-data" || true
+          podman image prune -f || true
+
+  dockerhub:
+    name: Ta bort PR-taggar på Docker Hub
+    if: vars.DOCKERHUB_IMAGE != '' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - name: Radera taggar pr-<nr>*
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          REPO: ${{ vars.DOCKERHUB_IMAGE }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          JWT=$(curl -fsS -X POST https://hub.docker.com/v2/users/login \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg u "$DH_USER" --arg p "$DH_TOKEN" '{username:$u,password:$p}')" | jq -r .token)
+          TAGS=$(curl -fsS -H "Authorization: Bearer $JWT" \
+            "https://hub.docker.com/v2/repositories/$REPO/tags?page_size=100&name=pr-$PR" \
+            | jq -r --arg p "pr-$PR" '.results[].name | select(. == $p or startswith($p + "-"))')
+          for t in $TAGS; do
+            echo "Tar bort $REPO:$t"
+            curl -fsS -X DELETE -H "Authorization: Bearer $JWT" "https://hub.docker.com/v2/repositories/$REPO/tags/$t/" || true
+          done

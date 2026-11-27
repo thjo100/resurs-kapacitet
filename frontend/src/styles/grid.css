@@ -1,0 +1,176 @@
+/* Planeringsgrid: CSS grid-rader med sticky namnkolumn och rubrikrad. */
+.grid-wrap {
+  position: relative;
+  overflow: auto;
+  overscroll-behavior-x: contain;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-1);
+}
+.grid {
+  --name-w: 260px;
+  --cell-w: 58px;
+  --year-w: 80px;
+  width: 100%;
+  min-width: calc(var(--name-w) + 12 * var(--cell-w) + var(--year-w));
+}
+.g-row {
+  display: grid;
+  grid-template-columns: var(--name-w) repeat(12, minmax(var(--cell-w), 1fr)) var(--year-w);
+  align-items: stretch;
+}
+.c-name {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 8px 0 12px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  transition: box-shadow var(--dur-2);
+}
+.grid-wrap.scrolled .c-name {
+  box-shadow: 6px 0 6px -6px var(--shadow-edge);
+}
+.c-year {
+  border-left: 1px solid var(--border);
+}
+.g-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: 38px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.g-head .c-name {
+  z-index: 4;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.mh {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 10px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  background: var(--surface);
+}
+.mh.current {
+  color: var(--accent);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.team-row {
+  min-height: 42px;
+  background: var(--surface-3);
+  border-bottom: 1px solid var(--border);
+}
+.team-row .c-name {
+  background: var(--surface-3);
+}
+.team-row > .c-occ,
+.team-row > .c-year {
+  padding: 5px 2px;
+}
+.team-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+}
+.team-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+.total-row {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  min-height: 42px;
+  background: var(--surface);
+  border-top: 2px solid var(--border-strong);
+}
+.total-row .c-name {
+  z-index: 4;
+  font-weight: 700;
+}
+.total-row > .c-occ,
+.total-row > .c-year {
+  padding: 5px 2px;
+}
+
+/* Drop-mål: kortet som dras in göms, raden markeras. */
+.res-row > .bl-card {
+  position: absolute !important;
+  left: 0;
+  top: 0;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  overflow: hidden;
+  pointer-events: none;
+}
+.res-row:has(> .bl-card) {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+  background: var(--accent-soft);
+}
+.res-row:has(> .bl-card) .c-name {
+  background: var(--accent-soft);
+}
+.res-row:has(> .bl-card)::after {
+  content: attr(data-drop-label);
+  position: absolute;
+  left: calc(var(--name-w) + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: var(--sh-2);
+  pointer-events: none;
+}
+body.dragging .res-row {
+  transition: background var(--dur-1);
+}
+body.dragging .res-row:hover {
+  background: color-mix(in srgb, var(--accent-soft) 50%, var(--surface));
+}
+
+@media (max-width: 767px) {
+  .grid {
+    --name-w: 150px;
+    --cell-w: 52px;
+    --year-w: 66px;
+  }
+  .c-name {
+    padding: 0 4px 0 8px;
+  }
+}

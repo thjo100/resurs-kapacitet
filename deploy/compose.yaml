@@ -1,0 +1,19 @@
+# Lokal körning med podman-compose (eller docker compose):
+#   podman-compose -f deploy/compose.yaml up -d
+# Öppna http://localhost:8080 – logga in med admin/admin (demodata ingår).
+services:
+  app:
+    image: ${IMAGE:-docker.io/DITT-KONTO/resurs-kapacitet:latest}
+    build:
+      context: ..
+      dockerfile: Containerfile
+    ports:
+      - "8080:8080"
+    environment:
+      SEED_DEMO: "true"
+      TZ: Europe/Stockholm
+    volumes:
+      - resurs-data:/data
+    restart: unless-stopped
+volumes:
+  resurs-data:

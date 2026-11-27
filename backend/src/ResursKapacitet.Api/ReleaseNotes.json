@@ -1,0 +1,17 @@
+[
+  {
+    "version": "1.0.0",
+    "date": "2026-11-27",
+    "title": "Första versionen av Resurs & Kapacitet",
+    "items": [
+      { "type": "new", "text": "Planeringsvy som i Excel – resurser × månader med uppdragsrader, tangentbordsnavigering och inklistring direkt från Excel." },
+      { "type": "new", "text": "Beläggning per resurs och team med färgkodning (ledigt, ok, överbelagd) och 'kvar att fördela' per uppdrag." },
+      { "type": "new", "text": "Backlogg med drag-n-drop: prioritera i listan och dra uppdrag direkt till en resurs." },
+      { "type": "new", "text": "Uppdragssammanställning per förvaltningsobjekt/projekt med estimat, fördelat och kvar." },
+      { "type": "new", "text": "Ändringslogg som visar vem som ändrade vad och när." },
+      { "type": "new", "text": "Admin för resurser, team, objekt, uppdrag, användare och inställningar (kapacitet, månadsfaktorer, trösklar)." },
+      { "type": "new", "text": "Frånvaro/semester per resurs och månad, import och export i Excel-format." },
+      { "type": "new", "text": "Mörkt och ljust tema, fungerar på mobil och surfplatta." }
+    ]
+  }
+]

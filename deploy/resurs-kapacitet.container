@@ -1,0 +1,40 @@
+# Podman Quadlet – kör Resurs & Kapacitet som en systemd-tjänst med automatiska uppgraderingar.
+#
+# Installation (rootless, som den användare som ska köra tjänsten):
+#   mkdir -p ~/.config/containers/systemd
+#   cp resurs-kapacitet.container ~/.config/containers/systemd/
+#   # ändra Image= nedan till ert Docker Hub-konto
+#   systemctl --user daemon-reload
+#   systemctl --user start resurs-kapacitet
+#   loginctl enable-linger $USER                     # starta även utan inloggning
+#   systemctl --user enable --now podman-auto-update.timer   # daglig automatisk uppgradering
+#
+# För root: lägg filen i /etc/containers/systemd/ och använd systemctl utan --user.
+
+[Unit]
+Description=Resurs & Kapacitet (resursplanering)
+Wants=network-online.target
+After=network-online.target
+
+[Container]
+Image=docker.io/DITT-KONTO/resurs-kapacitet:latest
+ContainerName=resurs-kapacitet
+PublishPort=8080:8080
+Volume=resurs-kapacitet-data:/data:Z
+Environment=TZ=Europe/Stockholm
+# Lösenord för första admin-kontot (används bara när databasen skapas första gången).
+# Utelämnas det blir lösenordet "admin" och måste bytas vid första inloggningen.
+#Environment=ADMIN_PASSWORD=byt-mig
+# Hämta ny image automatiskt när `podman auto-update` körs. Rullar tillbaka om den nya inte startar.
+AutoUpdate=registry
+HealthCmd=dotnet ResursKapacitet.Api.dll --healthcheck
+HealthInterval=30s
+HealthRetries=3
+HealthStartPeriod=30s
+
+[Service]
+Restart=always
+TimeoutStartSec=300
+
+[Install]
+WantedBy=default.target

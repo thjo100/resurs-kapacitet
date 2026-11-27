@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Resurs- och kapacitetsplanering för systemutvecklingsteam" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Resurs &amp; Kapacitet</title>
+    <script>
+      // Sätt tema innan appen monteras så att fel tema aldrig blinkar till.
+      (function () {
+        try {
+          var t = localStorage.getItem('rk-theme')
+          if (t !== 'light' && t !== 'dark') {
+            t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          }
+          document.documentElement.setAttribute('data-theme', t)
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light')
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
