@@ -271,6 +271,18 @@ public class JsonImportTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
+    public async Task Praktikant_kan_importeras_och_exporteras()
+    {
+        var c = await Admin();
+        var doc = """{ "year": 2033, "resources": [ { "name": "Pelle Prak", "type": "Praktikant" } ] }""";
+        var r = await (await c.PostAsync("/api/import/json?dryRun=false", Body(doc))).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(r.GetProperty("applied").GetBoolean(), r.ToString());
+        var p = await c.GetFromJsonAsync<JsonElement>("/api/planning?year=2033");
+        var pelle = p.GetProperty("resources").EnumerateArray().First(x => x.GetProperty("name").GetString() == "Pelle Prak");
+        Assert.Equal("Praktikant", pelle.GetProperty("type").GetString());
+    }
+
+    [Fact]
     public async Task Fel_ger_allt_eller_inget()
     {
         var c = await Admin();

@@ -11,7 +11,7 @@ Kommentarer (`//`) och avslutande komma är tillåtna.
   Det betyder att samma fil kan köras flera gånger och att du kan läsa in en liten fil med bara ändringar.
 - `allocations.hours` är exakt 12 heltal (JAN–DEC) och **ersätter** timmarna för den raden och det året.
   Resursen och uppdraget måste finnas (i filen eller redan i appen). Skriv `object` om samma uppdragsnamn finns under flera objekt.
-- Enum-värden är toleranta för versaler och å/ä/ö: `Intern|Konsult`, `Forvaltning|Projekt`,
+- Enum-värden är toleranta för versaler och å/ä/ö: `Intern|Konsult|Praktikant`, `Forvaltning|Projekt`,
   `Backlogg|Planerad|Pagaende|Pausad|Klar`. Datum skrivs `ÅÅÅÅ-MM-DD`.
 - `absence` på en resurs sätter **kapacitet i timmar** en viss månad (t.ex. semester).
 - Importen är **allt eller inget**: ett enda fel i filen betyder att ingenting sparas, och felen listas.

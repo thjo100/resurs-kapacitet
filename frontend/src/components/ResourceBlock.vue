@@ -189,6 +189,7 @@ const cellLabel = (a, m) => `${props.resource.name}, ${asg(a)?.name ?? ''}, ${MO
           </span>
         </button>
         <span v-if="resource.type === 'Konsult'" class="chip" title="Konsult">K</span>
+        <span v-if="resource.type === 'Praktikant'" class="chip" title="Praktikant">P</span>
         <span v-if="!resource.isActive" class="chip" title="Inaktiv">Inaktiv</span>
       </div>
       <div v-for="(c, m) in capacity" :key="m" class="c-occ">

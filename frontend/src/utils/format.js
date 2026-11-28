@@ -9,7 +9,7 @@ export const STATUS_ORDER = ['Backlogg', 'Planerad', 'Pagaende', 'Pausad', 'Klar
 
 export const ROLES = { Lasare: 'Läsare', Planerare: 'Planerare', Admin: 'Admin' }
 export const OBJECT_TYPES = { Forvaltning: 'Förvaltningsobjekt', Projekt: 'Projekt' }
-export const RESOURCE_TYPES = { Intern: 'Intern', Konsult: 'Konsult' }
+export const RESOURCE_TYPES = { Intern: 'Intern', Konsult: 'Konsult', Praktikant: 'Praktikant' }
 
 const nf = new Intl.NumberFormat('sv-SE', { maximumFractionDigits: 0 })
 export const fmt = (n) => (n === null || n === undefined || Number.isNaN(n) ? '–' : nf.format(n))

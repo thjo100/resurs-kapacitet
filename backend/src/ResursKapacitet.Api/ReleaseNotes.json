@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.3.0",
+    "date": "2026-11-28",
+    "title": "Resurstypen Praktikant",
+    "items": [
+      { "type": "new", "text": "Resurser kan ha typen Praktikant (förutom Intern och Konsult). Praktikanter märks med ett P i planeringen." }
+    ]
+  },
+  {
     "version": "1.2.0",
     "date": "2026-11-28",
     "title": "Indragbara menyer",

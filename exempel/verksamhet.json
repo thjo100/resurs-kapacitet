@@ -19,7 +19,7 @@
       "name": "Anna Andersson",
       "team": "Team Alfa",
       "role": "Systemutvecklare",
-      "type": "Intern",              // Intern | Konsult
+      "type": "Intern",              // Intern | Konsult | Praktikant
       "capacityPerMonth": 160,       // utelämna = standardkapacitet
       "employmentPercent": 100,
       "startDate": "2020-01-01",

@@ -1,6 +1,7 @@
 namespace ResursKapacitet.Api.Data;
 
-public enum ResourceType { Intern, Konsult }
+// Lagras som text i databasen, så nya värden kräver ingen migrering. Lägg nya sist.
+public enum ResourceType { Intern, Konsult, Praktikant }
 
 public enum ObjectType { Forvaltning, Projekt }
 
