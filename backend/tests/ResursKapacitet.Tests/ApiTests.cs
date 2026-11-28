@@ -220,3 +220,72 @@ public class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.NotFound, (await c.GetAsync("/api/finns-inte")).StatusCode);
     }
 }
+
+public class JsonImportTests(ApiFactory factory) : IClassFixture<ApiFactory>
+{
+    private const string Doc = """
+    { // kommentar tillåts
+      "year": 2031,
+      "teams": [ { "name": "Team Z" } ],
+      "resources": [ { "name": "Zed Test", "team": "Team Z", "type": "konsult", "absence": [ { "month": 7, "hours": 20 } ] } ],
+      "objects": [ { "name": "Sys Z", "type": "Förvaltning" } ],
+      "assignments": [ { "name": "Uppdrag Z", "object": "Sys Z", "estimatedHours": 100, "status": "Pågående" } ],
+      "allocations": [ { "resource": "Zed Test", "assignment": "Uppdrag Z", "hours": [10,10,10,0,0,0,0,0,0,0,0,0] } ],
+    }
+    """;
+
+    private async Task<HttpClient> Admin()
+    {
+        var c = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        (await c.PostAsJsonAsync("/api/auth/login", new { userName = "admin", password = "hemligt1" })).EnsureSuccessStatusCode();
+        return c;
+    }
+
+    private static StringContent Body(string s) => new(s, System.Text.Encoding.UTF8, "application/json");
+
+    [Fact]
+    public async Task DryRun_ändrar_inget_men_apply_skapar_och_är_idempotent()
+    {
+        var c = await Admin();
+
+        var dry = await c.PostAsync("/api/import/json", Body(Doc));
+        dry.EnsureSuccessStatusCode();
+        var d = await dry.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(d.GetProperty("applied").GetBoolean());
+        Assert.Equal(1, d.GetProperty("newResources").GetInt32());
+        Assert.Equal(0, d.GetProperty("errors").GetArrayLength());
+        var before = await c.GetFromJsonAsync<JsonElement>("/api/planning?year=2031");
+        Assert.DoesNotContain(before.GetProperty("resources").EnumerateArray(), r => r.GetProperty("name").GetString() == "Zed Test");
+
+        var apply = await c.PostAsync("/api/import/json?dryRun=false", Body(Doc));
+        var a = await apply.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(a.GetProperty("applied").GetBoolean());
+        Assert.Equal(30, a.GetProperty("hours").GetInt32());
+
+        var again = await (await c.PostAsync("/api/import/json?dryRun=false", Body(Doc))).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(0, again.GetProperty("newResources").GetInt32());
+        Assert.Equal(0, again.GetProperty("newAllocations").GetInt32());
+
+        var after = await c.GetFromJsonAsync<JsonElement>("/api/planning?year=2031");
+        Assert.Contains(after.GetProperty("resources").EnumerateArray(), r => r.GetProperty("name").GetString() == "Zed Test");
+    }
+
+    [Fact]
+    public async Task Fel_ger_allt_eller_inget()
+    {
+        var c = await Admin();
+        var bad = """{ "year": 2032, "resources": [ { "name": "Ska Inte Finnas" } ], "allocations": [ { "resource": "Nobody", "assignment": "X", "hours": [1] } ] }""";
+        var r = await (await c.PostAsync("/api/import/json?dryRun=false", Body(bad))).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(r.GetProperty("applied").GetBoolean());
+        Assert.True(r.GetProperty("errors").GetArrayLength() > 0);
+        var p = await c.GetFromJsonAsync<JsonElement>("/api/planning?year=2032");
+        Assert.DoesNotContain(p.GetProperty("resources").EnumerateArray(), x => x.GetProperty("name").GetString() == "Ska Inte Finnas");
+    }
+
+    [Fact]
+    public async Task Kräver_admin()
+    {
+        var anon = factory.CreateClient();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anon.PostAsync("/api/import/json", Body(Doc))).StatusCode);
+    }
+}

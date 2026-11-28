@@ -122,6 +122,8 @@ Migreringarna körs automatiskt när appen startar. Innan schemat ändras sparas
 
 ## Köra med Podman
 
+Egen verksamhetsdata från JSON: se [docs/egen-data.md](docs/egen-data.md).
+
 På Windows: se [docs/lokal-windows.md](docs/lokal-windows.md) och skriptet `scripts/local.ps1` (start, backup, restore, upgrade).
 
 ```bash

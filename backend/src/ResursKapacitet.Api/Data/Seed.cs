@@ -31,10 +31,27 @@ public static class Seed
         }
 
         var seedDemo = config.GetValue<bool>("SEED_DEMO");
-        if (seedDemo && !await db.Teams.AnyAsync() && !await db.Resources.AnyAsync())
+        if (seedDemo && string.IsNullOrWhiteSpace(config["SEED_FILE"]) && !await db.Teams.AnyAsync() && !await db.Resources.AnyAsync())
         {
             await SeedDemoAsync(db, DateTime.Now.Year);
             logger.LogInformation("Demodata skapad.");
+        }
+
+        // Egen data: SEED_FILE pekar på en JSON-fil som läses in när databasen är tom (se docs/egen-data.md).
+        var seedFile = config["SEED_FILE"];
+        if (!string.IsNullOrWhiteSpace(seedFile) && !await db.Teams.AnyAsync() && !await db.Resources.AnyAsync())
+        {
+            if (!File.Exists(seedFile)) logger.LogError("SEED_FILE {File} finns inte.", seedFile);
+            else
+            {
+                var ds = JsonImport.Parse(await File.ReadAllTextAsync(seedFile));
+                var result = ds is null ? null : await JsonImport.ApplyAsync(db, ds, dryRun: false);
+                if (result is { Applied: true })
+                    logger.LogInformation("Data inläst från {File}: {R} resurser, {A} uppdrag, {F} fördelningar.",
+                        seedFile, result.NewResources, result.NewAssignments, result.NewAllocations);
+                else
+                    logger.LogError("Kunde inte läsa {File}: {Errors}", seedFile, string.Join(" | ", result?.Errors ?? ["tom fil"]));
+            }
         }
 
         // Rensa gammal ändringslogg enligt inställd lagringstid.

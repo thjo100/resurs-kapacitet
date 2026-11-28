@@ -1,0 +1,53 @@
+{
+  // Mall för egen verksamhetsdata. Alla delar är valfria. Kommentarer och avslutande komma tillåts.
+  // Poster matchas på NAMN (skiftlägesokänsligt): finns de uppdateras de, annars skapas de. Inget raderas.
+  "year": 2027,
+
+  "settings": {
+    "organizationName": "Min organisation",
+    "standardCapacity": 160,
+    "planningCeilingPercent": 90,
+    "monthFactors": [1, 1, 1, 1, 1, 0.9, 0.25, 0.9, 1, 1, 1, 0.85]
+  },
+
+  "teams": [
+    { "name": "Team Alfa", "lead": "Förnamn Efternamn", "description": "Vad teamet gör", "color": "#4f6bed" }
+  ],
+
+  "resources": [
+    {
+      "name": "Anna Andersson",
+      "team": "Team Alfa",
+      "role": "Systemutvecklare",
+      "type": "Intern",              // Intern | Konsult
+      "capacityPerMonth": 160,       // utelämna = standardkapacitet
+      "employmentPercent": 100,
+      "startDate": "2020-01-01",
+      "absence": [ { "month": 7, "hours": 40, "reason": "Semester" } ]   // kapacitet i timmar den månaden
+    }
+  ],
+
+  "objects": [
+    { "name": "System X", "type": "Forvaltning", "owner": "Karin Holm", "budgetHoursPerYear": 1200 },  // Forvaltning | Projekt
+    { "name": "Projekt Nystart", "type": "Projekt" }
+  ],
+
+  "assignments": [
+    {
+      "name": "Uppgradera System X",
+      "object": "System X",
+      "estimatedHours": 400,
+      "priority": 1,
+      "status": "Pagaende",          // Backlogg | Planerad | Pagaende | Pausad | Klar
+      "requester": "Beställare",
+      "responsible": "Anna Andersson"
+    },
+    { "name": "Ny rapportmodul", "object": "System X", "estimatedHours": 250, "status": "Backlogg" }
+  ],
+
+  "allocations": [
+    // hours = 12 heltal JAN..DEC. Ersätter timmarna för raden det året.
+    { "resource": "Anna Andersson", "assignment": "Uppgradera System X", "object": "System X",
+      "hours": [80, 80, 60, 60, 40, 40, 0, 20, 20, 0, 0, 0] }
+  ]
+}

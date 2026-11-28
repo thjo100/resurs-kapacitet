@@ -82,6 +82,24 @@ public static class ImportExportEndpoints
             return CsvFile(sb, $"uppdrag-{y}.csv");
         });
 
+        // Hela verksamhetsdatan som JSON (team, resurser, objekt, uppdrag, fördelning). Standard är torrkörning.
+        app.MapPost("/api/import/json", async (HttpRequest request, AppDbContext db, ClaimsPrincipal user, bool? dryRun) =>
+        {
+            Dataset? ds;
+            try
+            {
+                using var reader = new StreamReader(request.Body, Encoding.UTF8);
+                ds = JsonImport.Parse(await reader.ReadToEndAsync());
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                return Results.BadRequest(new { error = $"Ogiltig JSON: {ex.Message}" });
+            }
+            if (ds is null) return Results.BadRequest(new { error = "Tom JSON." });
+            var result = await JsonImport.ApplyAsync(db, ds, dryRun ?? true);
+            return Results.Ok(result);
+        }).RequireAuthorization("Admin");
+
         app.MapPost("/api/import/planning", async (ImportRequest req, AppDbContext db, ClaimsPrincipal user) =>
         {
             var parsed = PlanningImport.Parse(req.Text);

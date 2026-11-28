@@ -1,5 +1,14 @@
 [
   {
+    "version": "1.1.0",
+    "date": "2026-11-28",
+    "title": "Importera egen verksamhetsdata från JSON",
+    "items": [
+      { "type": "new", "text": "Admin kan läsa in team, resurser, objekt, uppdrag och fördelning från en JSON-fil. Torrkörning visar vad som skulle ändras innan något sparas." },
+      { "type": "new", "text": "Appen kan läsa in en JSON-fil vid första start (SEED_FILE), så att en ny installation kan börja med egen data istället för demodata." }
+    ]
+  },
+  {
     "version": "1.0.0",
     "date": "2026-11-27",
     "title": "Första versionen av Resurs & Kapacitet",
