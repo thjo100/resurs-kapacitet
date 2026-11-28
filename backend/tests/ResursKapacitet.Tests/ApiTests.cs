@@ -289,3 +289,31 @@ public class JsonImportTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, (await anon.PostAsync("/api/import/json", Body(Doc))).StatusCode);
     }
 }
+
+public class JsonExportTests(ApiFactory factory) : IClassFixture<ApiFactory>
+{
+    [Fact]
+    public async Task Export_kan_importeras_igen_utan_ändringar()
+    {
+        var c = factory.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
+        (await c.PostAsJsonAsync("/api/auth/login", new { userName = "admin", password = "hemligt1" })).EnsureSuccessStatusCode();
+
+        var json = await c.GetStringAsync("/api/export/dataset.json");
+        Assert.Contains("Kalle Anka", json);
+
+        var body = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+        var r = await (await c.PostAsync("/api/import/json?dryRun=false", body)).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(r.GetProperty("applied").GetBoolean(), r.ToString());
+        Assert.Equal(0, r.GetProperty("newTeams").GetInt32());
+        Assert.Equal(0, r.GetProperty("newResources").GetInt32());
+        Assert.Equal(0, r.GetProperty("newObjects").GetInt32());
+        Assert.Equal(0, r.GetProperty("newAssignments").GetInt32());
+        Assert.Equal(0, r.GetProperty("newAllocations").GetInt32());
+    }
+
+    [Fact]
+    public async Task Export_kräver_admin()
+    {
+        Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().GetAsync("/api/export/dataset.json")).StatusCode);
+    }
+}

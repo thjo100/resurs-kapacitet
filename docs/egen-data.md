@@ -41,6 +41,21 @@ Skriptet frågar efter admin-inloggning. Samma sak finns i API:t: `POST /api/imp
 Det första adminlösenordet blir `admin` (eller `$env:ADMIN_PASSWORD`) och måste bytas. I produktion används miljövariabeln
 `SEED_FILE=/data/seed.json`: filen läses in bara när databasen är tom och ignoreras annars.
 
+## Arbeta i gränssnittet och i JSON om vartannat
+
+*Admin → Import/export → Exportera → Verksamhetsdata (JSON)* ger en fil i exakt samma format som importen läser
+(alla team, resurser inkl. frånvaro, objekt, uppdrag och fördelning för alla år). Redigera den och läs in den igen under
+*Importera JSON* (förhandsgranska, sedan Importera), eller med `local.ps1 import`. Via API: `GET /api/export/dataset.json`.
+
+Tänk på att:
+
+- **Byter du namn** på en resurs, ett uppdrag eller ett objekt i JSON skapas en *ny* post (matchningen sker på namn).
+  Byt namn i gränssnittet istället, eller exportera på nytt efteråt.
+- **Borttagna rader i JSON raderas inte** i appen. Vill du ta bort något gör du det i gränssnittet, eller sätter `"isActive": false`
+  på team, resurser och objekt.
+- Fördelning och ändringsloggens historik följer med som den är; importen loggar en rad i ändringsloggen.
+- Ta en backup (`local.ps1 backup`) innan stora importer.
+
 ## Gott råd
 
 - **Spara filen i git** (men inte persondata du inte får lägga där; håll då repot privat eller `data-lokal/` utanför versionshantering).

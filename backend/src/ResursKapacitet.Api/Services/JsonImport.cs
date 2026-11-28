@@ -7,12 +7,12 @@ using ResursKapacitet.Api.Data;
 namespace ResursKapacitet.Api.Services;
 
 public record DatasetSettings(string? OrganizationName, int? StandardCapacity, int? PlanningCeilingPercent, double[]? MonthFactors);
-public record DatasetTeam(string Name, string? Lead, string? Description, string? Color);
+public record DatasetTeam(string Name, string? Lead, string? Description, string? Color, bool? IsActive = null);
 public record DatasetAbsence(int Month, int Hours, string? Reason, int? Year);
 public record DatasetResource(
     string Name, string? Team, string? Role, string? Type, int? CapacityPerMonth, int? EmploymentPercent,
-    string? StartDate, string? EndDate, string? Notes, List<DatasetAbsence>? Absence);
-public record DatasetObject(string Name, string? Type, string? Owner, int? BudgetHoursPerYear, string? Description, string? Color);
+    string? StartDate, string? EndDate, string? Notes, List<DatasetAbsence>? Absence, bool? IsActive = null);
+public record DatasetObject(string Name, string? Type, string? Owner, int? BudgetHoursPerYear, string? Description, string? Color, bool? IsActive = null);
 public record DatasetAssignment(
     string Name, string? Object, int? EstimatedHours, int? Priority, string? Status, string? StartDate,
     string? EndDate, string? Requester, string? Responsible, string? Description);
@@ -84,6 +84,7 @@ public static class JsonImport
             if (t.Lead is not null) team.Lead = t.Lead;
             if (t.Description is not null) team.Description = t.Description;
             if (!string.IsNullOrWhiteSpace(t.Color)) team.Color = t.Color;
+            if (t.IsActive is { } ta) team.IsActive = ta;
         }
 
         // ---- Objekt ----
@@ -103,6 +104,7 @@ public static class JsonImport
             if (o.BudgetHoursPerYear is { } b) obj.BudgetHoursPerYear = b;
             if (o.Description is not null) obj.Description = o.Description;
             if (!string.IsNullOrWhiteSpace(o.Color)) obj.Color = o.Color;
+            if (o.IsActive is { } oa) obj.IsActive = oa;
         }
 
         // ---- Resurser ----
@@ -136,6 +138,7 @@ public static class JsonImport
             if (ParseDate(r.StartDate, errors, $"resurs '{r.Name}' startDate") is { } sd) res.StartDate = sd;
             if (ParseDate(r.EndDate, errors, $"resurs '{r.Name}' endDate") is { } ed) res.EndDate = ed;
             if (r.Notes is not null) res.Notes = r.Notes;
+            if (r.IsActive is { } ra) res.IsActive = ra;
 
             foreach (var a in r.Absence ?? [])
             {
@@ -261,6 +264,46 @@ public static class JsonImport
         return new DatasetImportResult(apply,
             ds.Teams?.Count ?? 0, ds.Resources?.Count ?? 0, ds.Objects?.Count ?? 0, ds.Assignments?.Count ?? 0,
             ds.Allocations?.Count ?? 0, nTeams, nRes, nObj, nAsg, nAlloc, hours, errors);
+    }
+
+    /// <summary>Exporterar hela databasen i samma format som importen läser (rundresa: exportera, redigera, importera).</summary>
+    public static async Task<Dataset> ExportAsync(AppDbContext db, int year)
+    {
+        var st = await db.Settings.AsNoTracking().FirstAsync();
+        var teams = await db.Teams.AsNoTracking().OrderBy(t => t.SortOrder).ThenBy(t => t.Name).ToListAsync();
+        var resources = await db.Resources.AsNoTracking().Include(r => r.Team).Include(r => r.CapacityOverrides)
+            .OrderBy(r => r.SortOrder).ThenBy(r => r.Name).ToListAsync();
+        var objects = await db.Objects.AsNoTracking().OrderBy(o => o.Name).ToListAsync();
+        var assignments = await db.Assignments.AsNoTracking().Include(a => a.Object).OrderBy(a => a.Priority).ToListAsync();
+        var allocations = await db.Allocations.AsNoTracking().Include(a => a.Resource).Include(a => a.Assignment)
+            .ThenInclude(a => a!.Object).Include(a => a.Months).ToListAsync();
+
+        static string? D(DateOnly? d) => d?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+        var allocs = new List<DatasetAllocation>();
+        foreach (var a in allocations.OrderBy(a => a.Resource!.SortOrder).ThenBy(a => a.Resource!.Name).ThenBy(a => a.Assignment!.Priority))
+        {
+            var years = a.Months.Select(m => m.Year).Distinct().DefaultIfEmpty(year).Order();
+            foreach (var y in years)
+            {
+                var hours = new int[12];
+                foreach (var m in a.Months.Where(m => m.Year == y && m.Month is >= 1 and <= 12)) hours[m.Month - 1] = m.Hours;
+                allocs.Add(new DatasetAllocation(a.Resource!.Name, a.Assignment!.Name, a.Assignment.Object?.Name, y, hours, a.Note));
+            }
+        }
+
+        return new Dataset(
+            year,
+            new DatasetSettings(st.OrganizationName, st.StandardCapacity, st.PlanningCeilingPercent, st.GetMonthFactors()),
+            teams.Select(t => new DatasetTeam(t.Name, t.Lead, t.Description, t.Color, t.IsActive)).ToList(),
+            resources.Select(r => new DatasetResource(r.Name, r.Team?.Name, r.Role, r.Type.ToString(), r.CapacityPerMonth,
+                r.EmploymentPercent, D(r.StartDate), D(r.EndDate), r.Notes,
+                r.CapacityOverrides.OrderBy(o => o.Year).ThenBy(o => o.Month)
+                    .Select(o => new DatasetAbsence(o.Month, o.Hours, o.Reason, o.Year)).ToList(), r.IsActive)).ToList(),
+            objects.Select(o => new DatasetObject(o.Name, o.Type.ToString(), o.Owner, o.BudgetHoursPerYear, o.Description, o.Color, o.IsActive)).ToList(),
+            assignments.Select(a => new DatasetAssignment(a.Name, a.Object?.Name, a.EstimatedHours, a.Priority, a.Status.ToString(),
+                D(a.StartDate), D(a.EndDate), a.Requester, a.Responsible, a.Description)).ToList(),
+            allocs);
     }
 
     private static string Norm(string s) => new string(s.Normalize(NormalizationForm.FormD)

@@ -186,6 +186,33 @@ async function runImport(dryRun) {
     imp.busy = false
   }
 }
+
+// JSON-import (hela verksamhetsdatan). Torrkörning först, sedan spara.
+const demoMode = import.meta.env.VITE_DEMO === 'true'
+const jimp = reactive({ text: '', fileName: '', result: null, busy: false })
+async function pickJson(ev) {
+  const f = ev.target.files?.[0]
+  if (!f) return
+  jimp.text = await f.text()
+  jimp.fileName = f.name
+  jimp.result = null
+  ev.target.value = ''
+}
+async function runJsonImport(dryRun) {
+  jimp.busy = true
+  try {
+    jimp.result = await api.postText(`/api/import/json?dryRun=${dryRun}`, jimp.text)
+    if (jimp.result.applied) {
+      await refresh()
+      toast('JSON-importen är klar.', { type: 'success' })
+    }
+  } catch (e) {
+    jimp.result = null
+    toastError(e)
+  } finally {
+    jimp.busy = false
+  }
+}
 const copy = reactive({ from: year.value, to: year.value + 1, overwrite: false })
 async function copyYear() {
   try {
@@ -308,9 +335,33 @@ async function copyYear() {
         </section>
 
         <div class="stack">
+          <section v-if="!demoMode" class="card">
+            <header class="card-head"><Icon name="upload" :size="16" /><h3>Importera JSON</h3></header>
+            <div class="card-body stack">
+              <p class="muted small">
+                Hela verksamhetsdatan (team, resurser, objekt, uppdrag, fördelning). Poster matchas på namn och uppdateras eller skapas, inget raderas.
+                Fungerar på filen från <em>Exportera → Verksamhetsdata (JSON)</em>. Ett fel i filen betyder att ingenting sparas.
+              </p>
+              <input type="file" accept=".json,application/json" @change="pickJson" />
+              <textarea v-model="jimp.text" class="input mono" rows="6" placeholder="…eller klistra in JSON här" @input="jimp.result = null" />
+              <div class="row wrap">
+                <button class="btn" :disabled="!jimp.text || jimp.busy" @click="runJsonImport(true)">Förhandsgranska</button>
+                <button class="btn primary" :disabled="!jimp.result || jimp.result.applied || jimp.result.errors.length || jimp.busy" @click="runJsonImport(false)">Importera</button>
+              </div>
+              <div v-if="jimp.result" class="result" :class="{ ok: jimp.result.applied }">
+                <strong>{{ jimp.result.applied ? '✓ Importerat' : 'Förhandsgranskning' }}:</strong>
+                nya team {{ jimp.result.newTeams }}, resurser {{ jimp.result.newResources }}, objekt {{ jimp.result.newObjects }},
+                uppdrag {{ jimp.result.newAssignments }}, fördelningsrader {{ jimp.result.newAllocations }}; {{ fmt(jimp.result.hours) }} h i filen.
+                <ul v-if="jimp.result.errors.length" class="errors">
+                  <li v-for="(e, i) in jimp.result.errors" :key="i">{{ e }}</li>
+                </ul>
+              </div>
+            </div>
+          </section>
           <section class="card">
             <header class="card-head"><Icon name="download" :size="16" /><h3>Exportera</h3></header>
             <div class="card-body stack">
+              <a v-if="!demoMode" class="btn" :href="`/api/export/dataset.json?year=${year}`"><Icon name="database" :size="16" /> Verksamhetsdata (JSON)</a>
               <a class="btn" :href="`/api/export/planning.csv?year=${year}`"><Icon name="table" :size="16" /> Planering {{ year }} (Excel-format)</a>
               <a class="btn" :href="`/api/export/assignments.csv?year=${year}`"><Icon name="briefcase" :size="16" /> Uppdragssammanställning {{ year }}</a>
               <a class="btn" href="/api/admin/backup"><Icon name="database" :size="16" /> Säkerhetskopia av databasen</a>

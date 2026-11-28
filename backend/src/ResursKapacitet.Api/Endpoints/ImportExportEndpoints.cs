@@ -82,6 +82,19 @@ public static class ImportExportEndpoints
             return CsvFile(sb, $"uppdrag-{y}.csv");
         });
 
+        // Hela verksamhetsdatan som JSON i samma format som importen (rundresa: exportera, redigera, importera).
+        app.MapGet("/api/export/dataset.json", async (int? year, AppDbContext db) =>
+        {
+            var ds = await JsonImport.ExportAsync(db, year ?? DateTime.Now.Year);
+            var json = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(ds, new System.Text.Json.JsonSerializerOptions(JsonImport.Options)
+            {
+                WriteIndented = true,
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            });
+            return Results.File(json, "application/json; charset=utf-8", $"verksamhet-{DateTime.Now:yyyy-MM-dd}.json");
+        }).RequireAuthorization("Admin");
+
         // Hela verksamhetsdatan som JSON (team, resurser, objekt, uppdrag, fördelning). Standard är torrkörning.
         app.MapPost("/api/import/json", async (HttpRequest request, AppDbContext db, ClaimsPrincipal user, bool? dryRun) =>
         {

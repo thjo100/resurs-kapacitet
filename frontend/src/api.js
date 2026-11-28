@@ -7,7 +7,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request(method, url, body) {
+async function request(method, url, body, raw = false) {
   // Demoläge (npm run build:demo): svaren kommer från en webbläsarbaserad backend.
   if (import.meta.env.VITE_DEMO === 'true') {
     const { mockRequest } = await import('./demo/mockApi.js')
@@ -16,7 +16,7 @@ async function request(method, url, body) {
   const opts = { method, headers: {}, credentials: 'same-origin' }
   if (body !== undefined) {
     opts.headers['Content-Type'] = 'application/json'
-    opts.body = JSON.stringify(body)
+    opts.body = raw ? body : JSON.stringify(body)
   }
   let res
   try {
@@ -46,6 +46,8 @@ async function request(method, url, body) {
 export const api = {
   get: (url) => request('GET', url),
   post: (url, body) => request('POST', url, body ?? {}),
+  // Skickar text som den är (t.ex. JSON med kommentarer som servern själv tolkar).
+  postText: (url, text) => request('POST', url, text, true),
   put: (url, body) => request('PUT', url, body ?? {}),
   del: (url) => request('DELETE', url),
 }
