@@ -3,7 +3,7 @@
 import { computed, ref } from 'vue'
 import { store, canEdit, reorderBacklog, assignmentRemaining, toastError, toast } from '../store.js'
 import { vSortableList } from '../utils/dnd.js'
-import { fmt } from '../utils/format.js'
+import { fmt, STATUS } from '../utils/format.js'
 import { sum } from '../utils/calc.js'
 import BacklogCard from './BacklogCard.vue'
 import Expander from './Expander.vue'
@@ -22,9 +22,19 @@ const backlog = computed(() =>
   (store.planning?.assignments ?? []).filter((a) => a.status === 'Backlogg').sort((x, y) => x.priority - y.priority),
 )
 const visibleBacklog = computed(() => backlog.value.filter(match))
+// Filter för övriga uppdrag: välj vilka statusar som visas (Pausad ska gå att hitta) och om fullt fördelade ska med.
+const otherStatuses = ['Planerad', 'Pagaende', 'Pausad', 'Klar']
+const shownStatuses = ref(new Set(['Planerad', 'Pagaende', 'Pausad']))
+const showFull = ref(false)
+function toggleStatus(st) {
+  const s = new Set(shownStatuses.value)
+  s.has(st) ? s.delete(st) : s.add(st)
+  shownStatuses.value = s
+}
 const other = computed(() =>
   (store.planning?.assignments ?? [])
-    .filter((a) => a.status !== 'Backlogg' && a.status !== 'Klar' && assignmentRemaining(a) > 0)
+    .filter((a) => a.status !== 'Backlogg' && shownStatuses.value.has(a.status))
+    .filter((a) => showFull.value || a.status === 'Klar' || assignmentRemaining(a) > 0)
     .filter(match)
     .sort((x, y) => x.priority - y.priority),
 )
@@ -88,9 +98,22 @@ async function onReorder(visibleIds) {
 
     <button class="section-toggle" :aria-expanded="showOther" @click="showOther = !showOther">
       <Icon name="chevron-right" :size="14" class="chev" />
-      Ej fullt fördelade <span class="chip">{{ other.length }}</span>
+      Övriga uppdrag <span class="chip">{{ other.length }}</span>
     </button>
     <Expander :open="showOther">
+      <div class="filters" role="group" aria-label="Filtrera på status">
+        <button
+          v-for="st in otherStatuses"
+          :key="st"
+          class="fchip"
+          :class="{ on: shownStatuses.has(st) }"
+          :aria-pressed="shownStatuses.has(st)"
+          @click="toggleStatus(st)"
+        >
+          {{ STATUS[st] }}
+        </button>
+        <label class="checkbox xs"><input v-model="showFull" type="checkbox" /> Visa även fullt fördelade</label>
+      </div>
       <div v-if="other.length" v-sortable-list="{ sort: false, disabled: !canEdit }" class="list">
         <BacklogCard
           v-for="a in other"
@@ -101,12 +124,40 @@ async function onReorder(visibleIds) {
           @edit="emit('edit', $event)"
         />
       </div>
-      <p v-else class="faint small" style="padding: 4px 2px 8px">Alla pågående uppdrag är fullt fördelade.</p>
+      <p v-else class="faint small" style="padding: 4px 2px 8px">
+        Inga uppdrag matchar filtret. Slå på fler statusar eller “Visa även fullt fördelade”.
+      </p>
     </Expander>
   </section>
 </template>
 
 <style scoped>
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 2px 10px;
+}
+.fchip {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+}
+.fchip:hover {
+  background: var(--surface-2);
+}
+.fchip.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
 .backlog {
   display: flex;
   flex-direction: column;

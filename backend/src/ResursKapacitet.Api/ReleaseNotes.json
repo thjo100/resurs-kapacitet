@@ -7,6 +7,7 @@
       { "type": "new", "text": "Sidomenyn kan minimeras till en ikonrad och fästas öppen igen. Vid hover eller tangentbordsfokus expanderar den över innehållet." },
       { "type": "new", "text": "Översta menyn kan döljas för mer plats. Den fälls ned när du för musen till övre kanten, och fästs igen med knappen i kanten eller med nålen." },
       { "type": "improved", "text": "Planeringen har en enda knapp som växlar mellan Expandera och Fäll ihop alla." },
+      { "type": "improved", "text": "Backloggens lista över övriga uppdrag har statusfilter (Planerad, Pågående, Pausad, Klar) och val för att visa fullt fördelade uppdrag, så att pausade uppdrag går att hitta." },
       { "type": "improved", "text": "Valen sparas per webbläsare." }
     ]
   },
