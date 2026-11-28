@@ -33,6 +33,8 @@ export const store = reactive({
   theme:
     document.documentElement.getAttribute('data-theme') ||
     (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
+  // Menyer: fästa (synliga) eller indragna. Sparas per webbläsare.
+  ui: { sidebarPinned: readLS('rk-sidebar-pinned', '1') !== '0', topbarPinned: readLS('rk-topbar-pinned', '1') !== '0' },
   remoteChange: null,
   newVersion: null,
   lastSeenVersion: readLS('rk-last-seen-version', ''),
@@ -389,3 +391,12 @@ window.addEventListener('beforeunload', (e) => {
     e.preventDefault()
   }
 })
+
+export function toggleSidebarPinned() {
+  store.ui.sidebarPinned = !store.ui.sidebarPinned
+  writeLS('rk-sidebar-pinned', store.ui.sidebarPinned ? '1' : '0')
+}
+export function toggleTopbarPinned() {
+  store.ui.topbarPinned = !store.ui.topbarPinned
+  writeLS('rk-topbar-pinned', store.ui.topbarPinned ? '1' : '0')
+}

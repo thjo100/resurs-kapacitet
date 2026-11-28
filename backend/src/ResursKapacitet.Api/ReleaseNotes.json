@@ -1,5 +1,27 @@
 [
   {
+    "version": "1.2.0",
+    "date": "2026-11-28",
+    "title": "Indragbara menyer",
+    "items": [
+      { "type": "new", "text": "Sidomenyn kan minimeras till en ikonrad och fästas öppen igen. Vid hover eller tangentbordsfokus expanderar den över innehållet." },
+      { "type": "new", "text": "Översta menyn kan döljas för mer plats. Den fälls ned när du för musen till övre kanten, och fästs igen med knappen i kanten eller med nålen." },
+      { "type": "improved", "text": "Planeringen har en enda knapp som växlar mellan Expandera och Fäll ihop alla." },
+      { "type": "improved", "text": "Backloggens lista över övriga uppdrag har statusfilter (Planerad, Pågående, Pausad, Klar) och val för att visa fullt fördelade uppdrag, så att pausade uppdrag går att hitta." },
+      { "type": "improved", "text": "Valen sparas per webbläsare." }
+    ]
+  },
+  {
+    "version": "1.1.0",
+    "date": "2026-11-28",
+    "title": "Exportera och importera verksamhetsdata som JSON",
+    "items": [
+      { "type": "new", "text": "Admin kan läsa in team, resurser, objekt, uppdrag och fördelning från en JSON-fil. Torrkörning visar vad som skulle ändras innan något sparas." },
+      { "type": "new", "text": "Admin → Import/export: exportera hela verksamhetsdatan som JSON, redigera filen och importera den igen." },
+      { "type": "new", "text": "Appen kan läsa in en JSON-fil vid första start (SEED_FILE), så att en ny installation kan börja med egen data istället för demodata." }
+    ]
+  },
+  {
     "version": "1.0.0",
     "date": "2026-11-27",
     "title": "Första versionen av Resurs & Kapacitet",
