@@ -122,6 +122,8 @@ Migreringarna körs automatiskt när appen startar. Innan schemat ändras sparas
 
 ## Köra med Podman
 
+På Windows: se [docs/lokal-windows.md](docs/lokal-windows.md) och skriptet `scripts/local.ps1` (start, backup, restore, upgrade).
+
 ```bash
 podman build --format docker -t resurs-kapacitet .
 ```
