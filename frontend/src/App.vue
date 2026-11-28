@@ -7,6 +7,8 @@ import {
   loadVersion,
   loadPlanning,
   setTheme,
+  toggleSidebarPinned,
+  toggleTopbarPinned,
   setYear,
   logout,
   startPolling,
@@ -21,6 +23,16 @@ import { confirmState, closeConfirm } from './components/dialogs.js'
 import Icon from './components/Icon.vue'
 import Toasts from './components/Toasts.vue'
 import Modal from './components/Modal.vue'
+
+// Surfplatta är alltid ikonrad; mobil har bottennavigering (inga dolda menyer).
+const mqTablet = window.matchMedia('(min-width: 768px) and (max-width: 1199px)')
+const mqMobile = window.matchMedia('(max-width: 767px)')
+const isTablet = ref(mqTablet.matches)
+const isMobile = ref(mqMobile.matches)
+mqTablet.addEventListener('change', (e) => (isTablet.value = e.matches))
+mqMobile.addEventListener('change', (e) => (isMobile.value = e.matches))
+const sideRail = computed(() => !store.ui.sidebarPinned || isTablet.value)
+const topHidden = computed(() => !store.ui.topbarPinned && !isMobile.value)
 
 const route = useRoute()
 const router = useRouter()
@@ -115,7 +127,12 @@ const isActive = (item) => (item.name === 'admin' ? route.name === 'admin' : rou
 </script>
 
 <template>
-  <div class="shell">
+  <div class="shell" :class="{ rail: sideRail, 'top-hidden': topHidden }">
+    <div v-if="topHidden" class="top-hot">
+      <button class="top-tab" aria-label="Visa och fäst översta menyn" title="Fäst översta menyn" @click="toggleTopbarPinned">
+        <Icon name="chevron-down" :size="14" />
+      </button>
+    </div>
     <header class="topbar">
       <RouterLink to="/" class="brand" aria-label="Resurs & Kapacitet – startsida">
         <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true">
@@ -152,6 +169,14 @@ const isActive = (item) => (item.name === 'admin' ? route.name === 'admin' : rou
         {{ saveText }}
       </span>
 
+      <button
+        class="btn ghost icon hide-sm"
+        :aria-label="store.ui.topbarPinned ? 'Dölj översta menyn' : 'Fäst översta menyn'"
+        :title="store.ui.topbarPinned ? 'Dölj översta menyn (visas när du för musen till kanten)' : 'Fäst översta menyn'"
+        @click="toggleTopbarPinned"
+      >
+        <Icon :name="store.ui.topbarPinned ? 'chevron-up' : 'pin'" />
+      </button>
       <button class="btn ghost icon hide-sm" :aria-label="store.theme === 'dark' ? 'Ljust tema' : 'Mörkt tema'" @click="toggleTheme">
         <Icon :name="store.theme === 'dark' ? 'sun' : 'moon'" />
       </button>
@@ -192,6 +217,16 @@ const isActive = (item) => (item.name === 'admin' ? route.name === 'admin' : rou
         <span v-if="item.dot" class="dot" aria-label="Nyheter finns" />
       </RouterLink>
       <div class="spacer" />
+      <button
+        v-if="!isTablet"
+        class="nav-item pin-btn"
+        :title="store.ui.sidebarPinned ? 'Minimera menyn' : 'Fäst menyn öppen'"
+        :aria-pressed="store.ui.sidebarPinned"
+        @click="toggleSidebarPinned"
+      >
+        <Icon :name="store.ui.sidebarPinned ? 'panel-left' : 'pin'" />
+        <span class="label">{{ store.ui.sidebarPinned ? 'Minimera menyn' : 'Fäst menyn' }}</span>
+      </button>
       <div class="side-foot">
         <span class="faint xs" :title="store.version?.commit ? `Commit ${store.version.commit}` : ''">
           v{{ store.version?.version ?? '–' }}
@@ -428,6 +463,7 @@ const isActive = (item) => (item.name === 'admin' ? route.name === 'admin' : rou
   position: sticky;
   top: var(--topbar-h);
   height: calc(100vh - var(--topbar-h));
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -534,20 +570,103 @@ const isActive = (item) => (item.name === 'admin' ? route.name === 'admin' : rou
   right: -4px;
 }
 
-/* Surfplatta: ikonrad */
-@media (min-width: 768px) and (max-width: 1199px) {
-  .nav-item {
-    justify-content: center;
-    padding: 0;
+/* Indragen meny (ikonrad): expanderar över innehållet vid hover/fokus. Gäller alltid på surfplatta. */
+.shell.rail {
+  --sidebar-w: 64px;
+}
+.shell.rail .sidebar {
+  z-index: 40;
+  width: 64px;
+  overflow: hidden;
+  transition:
+    width var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out);
+}
+.shell.rail .sidebar:hover,
+.shell.rail .sidebar:has(:focus-visible) {
+  width: var(--sidebar-full-open, 224px);
+  box-shadow: var(--sh-2);
+}
+.shell.rail .nav-item {
+  justify-content: flex-start;
+  white-space: nowrap;
+}
+.shell.rail .nav-item .dot {
+  position: absolute;
+  top: 6px;
+  left: 30px;
+  margin: 0;
+}
+.shell.rail .sidebar:not(:hover):not(:has(:focus-visible)) .side-foot {
+  visibility: hidden;
+}
+.pin-btn {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+.nav-item :deep(svg) {
+  flex: none;
+}
+.nav-item .label {
+  white-space: nowrap;
+}
+.shell.rail .sidebar:not(:hover):not(:has(:focus-visible)) .label {
+  opacity: 0;
+}
+
+/* Översta menyn indragen (bara surfplatta/dator): visas som överlägg när musen når kanten. */
+@media (min-width: 768px) {
+  .shell.top-hidden {
+    --topbar-h: 0px;
   }
-  .nav-item .label,
-  .side-foot {
-    display: none;
+  .shell.top-hidden .topbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    transform: translateY(-101%);
+    height: var(--topbar-full);
+    box-shadow: var(--sh-2);
+    transition: transform var(--dur-2) var(--ease-out);
   }
-  .nav-item .dot {
+  .top-hot:hover ~ .topbar,
+  .shell.top-hidden .topbar:hover,
+  .shell.top-hidden .topbar:has(:focus-visible) {
+    transform: none;
+  }
+  .top-hot {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    z-index: 55;
+  }
+  .top-tab {
     position: absolute;
-    top: 6px;
-    right: 10px;
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+    width: 44px;
+    height: 14px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-top: 0;
+    border-radius: 0 0 var(--r-md) var(--r-md);
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: pointer;
+    opacity: 0.6;
+  }
+  .top-tab:hover {
+    opacity: 1;
+    color: var(--accent);
   }
 }
 

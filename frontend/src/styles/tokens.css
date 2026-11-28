@@ -71,8 +71,11 @@
   --ease-io: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  --topbar-h: 52px;
-  --sidebar-w: 224px;
+  /* -full = menyns egen storlek; --topbar-h/--sidebar-w = utrymme den tar just nu (0/64 när den är indragen). */
+  --topbar-full: 52px;
+  --sidebar-full: 224px;
+  --topbar-h: var(--topbar-full);
+  --sidebar-w: var(--sidebar-full);
   --bottomnav-h: 0px;
 }
 
@@ -176,12 +179,12 @@
 
 @media (max-width: 767px) {
   :root {
-    --topbar-h: 48px;
+    --topbar-full: 48px;
     --bottomnav-h: calc(56px + env(safe-area-inset-bottom));
   }
 }
 @media (min-width: 768px) and (max-width: 1199px) {
   :root {
-    --sidebar-w: 64px;
+    --sidebar-full: 64px;
   }
 }
