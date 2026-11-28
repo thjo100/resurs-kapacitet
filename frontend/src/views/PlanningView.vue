@@ -125,6 +125,10 @@ function toggleTeam(id) {
   s.has(id) ? s.delete(id) : s.add(id)
   collapsedTeams.value = s
 }
+// En enda knapp: visar "Fäll ihop" när allt är öppet, annars "Expandera".
+const allOpen = computed(
+  () => resources.value.length > 0 && collapsedTeams.value.size === 0 && resources.value.every((r) => expanded.value.has(r.id)),
+)
 function expandAll(open) {
   expanded.value = open ? new Set(resources.value.map((r) => r.id)) : new Set()
   if (open) collapsedTeams.value = new Set()
@@ -379,8 +383,14 @@ const exportUrl = computed(() => `/api/export/planning.csv?year=${year.value}`)
         <button :aria-pressed="mode === 'percent'" @click="mode = 'percent'">%</button>
         <button :aria-pressed="mode === 'free'" @click="mode = 'free'">Ledigt</button>
       </div>
-      <button class="btn sm" title="Expandera alla" @click="expandAll(true)"><Icon name="expand" :size="14" /><span class="hide-md">Expandera</span></button>
-      <button class="btn sm" title="Fäll ihop alla" @click="expandAll(false)"><Icon name="collapse" :size="14" /><span class="hide-md">Fäll ihop</span></button>
+      <button
+        class="btn sm"
+        :title="allOpen ? 'Fäll ihop alla' : 'Expandera alla'"
+        :aria-label="allOpen ? 'Fäll ihop alla' : 'Expandera alla'"
+        @click="expandAll(!allOpen)"
+      >
+        <Icon :name="allOpen ? 'collapse' : 'expand'" :size="14" /><span class="hide-md">{{ allOpen ? 'Fäll ihop' : 'Expandera' }}</span>
+      </button>
       <a class="btn sm" :href="exportUrl" title="Exportera till Excel (CSV)"><Icon name="download" :size="14" /><span class="hide-md">Excel</span></a>
       <button class="btn sm" :class="{ primary: showPanel }" :aria-pressed="showPanel" @click="showPanel = !showPanel">
         <Icon name="inbox" :size="14" /> Backlogg
